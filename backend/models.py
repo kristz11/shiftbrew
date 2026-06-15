@@ -21,7 +21,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String(255), nullable=False)  # bcrypt создаёт хеш длиной 60 символов
     full_name = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
     coffee_shop_id = Column(Integer, ForeignKey("coffee_shops.id"), nullable=True)
