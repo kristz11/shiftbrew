@@ -40,10 +40,10 @@ class User(Base):
     # Relationships
     shifts = relationship("Shift", back_populates="user", foreign_keys="Shift.user_id")
     shift_requests = relationship(
-        "ShiftRequest",
-        foreign_keys="ShiftRequest.requested_by",
-        overlaps="requester,to_user"
-    )
+    "ShiftRequest",
+    foreign_keys="ShiftRequest.requested_by",
+    overlaps="requester,to_user"
+)
     wishes = relationship("ShiftWish", back_populates="user")
     coffee_shop = relationship("CoffeeShop", back_populates="employees")
 
