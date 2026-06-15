@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || '/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://shiftbrew-production.up.railway.app';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -32,16 +32,16 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-    login: async (email, password) => {
-        const formData = new URLSearchParams();
-        formData.append('username', email);
-        formData.append('password', password);
-        
-        const response = await api.post('/token', formData, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        return response.data;
-    },
+   login: async (email, password) => {
+    const formData = new URLSearchParams();
+    formData.append('email', email);  // ← ИСПРАВЛЕНО!
+    formData.append('password', password);
+    
+    const response = await api.post('/token', formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    return response.data;
+},
     register: async (userData) => {
         const response = await api.post('/register', userData);
         return response.data;
