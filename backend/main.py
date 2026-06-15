@@ -157,7 +157,6 @@ async def initialize_database(db: Session = Depends(get_db)):
         if db.query(User).first():
             return {"message": "Database already initialized"}
         
-        # Импортируем здесь, чтобы избежать циклического импорта
         from auth import get_password_hash
         
         # Создаём управляющего
