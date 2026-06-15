@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -32,8 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi.security import OAuth2PasswordRequestForm
-
+# Auth endpoints
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -154,13 +154,9 @@ async def get_all_stats(
 async def initialize_database(db: Session = Depends(get_db)):
     """Создаёт тестовых пользователей для демонстрации"""
     try:
-        # Проверяем, есть ли уже пользователи
         if db.query(User).first():
             return {"message": "Database already initialized"}
         
-        from auth import get_password_hash
-        
-        # Создаём управляющего
         manager = User(
             email="admin@coffee.ru",
             hashed_password=get_password_hash("admin123"),
@@ -169,7 +165,6 @@ async def initialize_database(db: Session = Depends(get_db)):
         )
         db.add(manager)
         
-        # Создаём бариста
         barista = User(
             email="barista@coffee.ru",
             hashed_password=get_password_hash("barista123"),
