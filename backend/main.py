@@ -151,12 +151,14 @@ async def get_all_stats(
 @app.get("/init-db")
 @app.post("/init-db")
 async def initialize_database(db: Session = Depends(get_db)):
-    
     """Создаёт тестовых пользователей для демонстрации"""
     try:
         # Проверяем, есть ли уже пользователи
         if db.query(User).first():
             return {"message": "Database already initialized"}
+        
+        # Импортируем здесь, чтобы избежать циклического импорта
+        from auth import get_password_hash
         
         # Создаём управляющего
         manager = User(
