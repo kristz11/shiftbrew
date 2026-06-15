@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
-
 from database import engine, get_db, Base
 from models import User, RoleEnum
 from schemas import (
@@ -17,7 +16,7 @@ from schemas import (
 )
 import crud
 import auth
-from auth import get_current_user, get_current_manager, authenticate_user, create_access_token
+from auth import get_current_user, get_current_manager, authenticate_user, create_access_token, get_password_hash
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -147,6 +146,40 @@ async def get_all_stats(
     db: Session = Depends(get_db)
 ):
     return crud.get_all_work_time_stats(db, coffee_shop_id=coffee_shop_id, start_date=start_date, end_date=end_date)
+
+# Initialize database with test data
+@app.post("/init-db")
+async def initialize_database(db: Session = Depends(get_db)):
+    """Создаёт тестовых пользователей для демонстрации"""
+    try:
+        # Проверяем, есть ли уже пользователи
+        if db.query(User).first():
+            return {"message": "Database already initialized"}
+        
+        # Создаём управляющего
+        manager = User(
+            email="admin@coffee.ru",
+            hashed_password=get_password_hash("admin123"),
+            full_name="Администратор",
+            role=RoleEnum.MANAGER
+        )
+        db.add(manager)
+        
+        # Создаём бариста
+        barista = User(
+            email="barista@coffee.ru",
+            hashed_password=get_password_hash("barista123"),
+            full_name="Бариста Тестовый",
+            role=RoleEnum.BARISTA
+        )
+        db.add(barista)
+        
+        db.commit()
+        return {"message": "Test users created successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Health check
 @app.get("/")
