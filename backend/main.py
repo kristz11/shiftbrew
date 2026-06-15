@@ -148,8 +148,10 @@ async def get_all_stats(
     return crud.get_all_work_time_stats(db, coffee_shop_id=coffee_shop_id, start_date=start_date, end_date=end_date)
 
 # Initialize database with test data
+@app.get("/init-db")
 @app.post("/init-db")
 async def initialize_database(db: Session = Depends(get_db)):
+    
     """Создаёт тестовых пользователей для демонстрации"""
     try:
         # Проверяем, есть ли уже пользователи
