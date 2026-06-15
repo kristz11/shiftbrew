@@ -32,16 +32,10 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-   login: async (email, password) => {
-    const formData = new URLSearchParams();
-    formData.append('email', email);  // ← ИСПРАВЛЕНО!
-    formData.append('password', password);
-    
-    const response = await api.post('/token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    return response.data;
-},
+    login: async (email, password) => {
+        const response = await api.post('/token', { email, password });
+        return response.data;
+    },
     register: async (userData) => {
         const response = await api.post('/register', userData);
         return response.data;
