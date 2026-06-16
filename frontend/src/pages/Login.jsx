@@ -14,12 +14,17 @@ const Login = ({ onLogin }) => {
 
         try {
             const tokenData = await authAPI.login(email, password);
+            
+            // Сохраняем токен в localStorage ПЕРЕД запросом /users/me
+            localStorage.setItem('token', tokenData.access_token);
+            localStorage.setItem('user', JSON.stringify(tokenData));
+            
             const userData = await authAPI.getCurrentUser();
             onLogin(userData, tokenData.access_token);
         } catch (err) {
             setError('Неверный email или пароль');
         } finally {
-            setLoading(false);
+            setLoading(false); 
         }
     };
 
