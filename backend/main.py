@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
 from database import engine, get_db, Base
-from models import User, RoleEnum
+from models import User, RoleEnum, CoffeeShop
 from schemas import (
     UserCreate, UserResponse, UserUpdate, UserLogin,
     CoffeeShopCreate, CoffeeShopResponse,
@@ -22,20 +22,15 @@ from auth import get_current_user, get_current_manager, authenticate_user, creat
 # Create tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="ShiftBrew API", 
-    description="Schedule Management System for Coffee Shops",
-    docs_url="/api",
-    redoc_url="/docs"
-)
+app = FastAPI(title="ShiftBrew API", description="Schedule Management System for Coffee Shops")
 
-# Добавляем CORS middleware ПРАВИЛЬНО
+# CORS - ДОБАВЛЯЕМ ПРАВИЛЬНО
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://rare-spirit-production-8b58.up.railway.app",
         "http://localhost:3000",
-        "http://localhost:8000"
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -44,14 +39,20 @@ app.add_middleware(
     max_age=600,
 )
 
-# Health check - ПЕРВЫЙ endpoint
-@app.get("/")
-async def root():
-    return {"message": "ShiftBrew API is running", "version": "1.0.0"}
+# Middleware для добавления CORS заголовков ко всем ответам
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+# Обработка preflight OPTIONS запросов
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {}
 
 # Auth endpoints
 @app.post("/token", response_model=Token)
@@ -168,20 +169,32 @@ async def get_all_stats(
 ):
     return crud.get_all_work_time_stats(db, coffee_shop_id=coffee_shop_id, start_date=start_date, end_date=end_date)
 
-# Initialize database with test data
+# Initialize database with test data (ВКЛЮЧАЯ КОФЕЙНЮ!)
 @app.get("/init-db")
 @app.post("/init-db")
 async def initialize_database(db: Session = Depends(get_db)):
-    """Создаёт тестовых пользователей для демонстрации"""
+    """Создаёт тестовую кофейню и тестовых пользователей для демонстрации"""
     try:
-        if db.query(User).first():
+        # Проверяем, есть ли уже кофейни
+        if db.query(CoffeeShop).first():
             return {"message": "Database already initialized"}
         
+        # Создаём тестовую кофейню
+        coffee_shop = CoffeeShop(
+            name="Тестовая кофейня",
+            address="г. Екатеринбург, ул. Тестовая, 1"
+        )
+        db.add(coffee_shop)
+        db.commit()
+        db.refresh(coffee_shop)
+        
+        # Создаём тестовых пользователей с привязкой к кофейне
         manager = User(
             email="admin@coffee.ru",
             hashed_password=get_password_hash("admin123"),
             full_name="Администратор",
-            role=RoleEnum.MANAGER
+            role=RoleEnum.MANAGER,
+            coffee_shop_id=coffee_shop.id  # Привязываем к кофейне!
         )
         db.add(manager)
         
@@ -189,13 +202,54 @@ async def initialize_database(db: Session = Depends(get_db)):
             email="barista@coffee.ru",
             hashed_password=get_password_hash("barista123"),
             full_name="Бариста Тестовый",
-            role=RoleEnum.BARISTA
+            role=RoleEnum.BARISTA,
+            coffee_shop_id=coffee_shop.id  # Привязываем к кофейне!
         )
         db.add(barista)
         
         db.commit()
-        return {"message": "Test users created successfully"}
+        
+        return {
+            "message": "Test data created successfully",
+            "coffee_shop_id": coffee_shop.id,
+            "manager_id": manager.id,
+            "barista_id": barista.id
+        }
         
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+# Отдельный endpoint для создания кофейни
+@app.post("/coffee-shops/init-test", response_model=CoffeeShopResponse)
+async def create_test_coffee_shop(db: Session = Depends(get_db)):
+    """Создаёт тестовую кофейню"""
+    try:
+        # Проверяем, есть ли уже кофейни
+        existing_shop = db.query(CoffeeShop).first()
+        if existing_shop:
+            return existing_shop
+        
+        # Создаём тестовую кофейню
+        coffee_shop = CoffeeShop(
+            name="Тестовая кофейня",
+            address="г. Екатеринбург, ул. Тестовая, 1"
+        )
+        db.add(coffee_shop)
+        db.commit()
+        db.refresh(coffee_shop)
+        
+        return coffee_shop
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Health check
+@app.get("/")
+async def root():
+    return {"message": "ShiftBrew API is running", "version": "1.0.0"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
